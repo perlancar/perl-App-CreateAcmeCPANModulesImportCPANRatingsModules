@@ -90,8 +90,14 @@ sub create_acme_cpanmodules_import_cpanratings_user_modules {
             $content = File::Slurper::read_text($cache_path);
         }
 
+        my @review_htmls;
+        while ($content =~ m!<div class="review"(.+?)<div class="review_footer">!sg) {
+            push @review_htmls, $1;
+        }
+
         my @dists;
-        while ($content =~ m!<h3 class="review_header">.+?<a href="/dist/(^")">.+?/images/stars-(\d\.\d)\.png".+?<blockquote class="review_text">(.+?)</blockquote>!sg) {
+        for my $review_html (@review_htmls) {
+            $review_html =~ m!<h3 class="review_header">.+?<a href="/dist/([^"]+)">(?:.+?/images/stars-(\d\.\d)\.png")?.+?<blockquote class="review_text">(.+?)</blockquote>!s or die;
             push @dists, {dist=>$1, rating=>$2, text=>$3};
         }
 
@@ -100,7 +106,7 @@ sub create_acme_cpanmodules_import_cpanratings_user_modules {
             (my $mod = $dist->{dist}) =~ s/-/::/g;
             push @mods, {
                 module => $mod,
-                rating => $dist->{ranking} * 2, # converted from 1-5 scale to 1-10 scale
+                rating => defined($dist->{rating}) ? $dist->{rating} * 2 : undef, # converted from 1-5 scale to 1-10 scale
                 description => $dist->{text},
             };
         }
